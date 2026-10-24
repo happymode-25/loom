@@ -1,0 +1,22 @@
+; A small project plan.
+;
+; Grammar:
+;   title "..."                     an optional title for the report
+;   task NAME DURATION [after A, B]  a task, its duration, and what it follows
+;
+; Blank lines and lines starting with # or ; are ignored.
+; Durations are whole units (days, hours, points -- whatever you like).
+; `after` lists the tasks that must finish first; a task may name several,
+; separated by commas. A duration of 0 is a milestone.
+
+title "Website rebuild"
+
+task brief      2
+task design     5 after brief
+task copy       4 after brief
+task build      8 after design
+task integrate  2 after build
+task review     3 after integrate, copy
+task fix        2 after review
+task manual     6 after design
+task launch     2 after fix, manual
