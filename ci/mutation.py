@@ -2,8 +2,8 @@
 
 Every mutant is a one-line change that breaks a specific invariant or check.
 The sweep applies each one to a *scratch copy* of the tool (never the working
-tree), compiles it, and requires the selftest to notice. If a mutant survives,
-the selftest has a hole.
+tree), compiles it, and requires the selftest to notice with a named check
+failure. If a mutant survives, the selftest has a hole.
 
 The sweep is canary-guarded: a semantically-identical edit must SURVIVE, which
 proves the harness is testing behaviour and not merely diffing text.
@@ -22,43 +22,53 @@ import tempfile
 
 LIVE = pathlib.Path("loom.py")
 
-# (label, search, replace) -- each must make the selftest FAIL.
+# (label, search, replace) -- each must make the selftest FAIL with a name.
 MUTANTS = [
-    ("the first task starts at zero",
-     "        majority = total // 2 + 1",
-     "        majority = total // 2 + 100"),
-    ("every task appears in the order",
-     "            if picked is None:\n                exhausted += 1",
-     "            if picked is None:\n                exhausted += 0"),
-    ("a duplicate task is reported",
-     "        if duplicate:",
-     "        if False:"),
-    ("an unknown dependency is reported",
-     "            if name not in declared_set:",
-     "            if False:"),
-    ("a plan with no tasks is reported",
-     "    if not declared:",
-     "    if False:"),
-    ("a plan with no tasks is reported",
-     '    if not election["ballots"]:',
-     "    if False:"),
-    ("a task waits for a dependency",
-     '        if b["rank"] and b["rank"][0] in counts:\n'
-     '            counts[b["rank"][0]] += 1',
-     '        if b["rank"] and b["rank"][-1] in counts:\n'
-     '            counts[b["rank"][-1]] += 1'),
-    ("the long branch is critical",
-     "                counts[name] += 1",
-     "                counts[name] += 0"),
-    ("a clean plan exits 0",
-     '    if not tiebreak or tiebreak == "none":',
-     "    if False:"),
+    ("a title directive is unquoted",
+     'title = s[len("title "):].strip().strip(\'"\')',
+     'title = s[len("title "):].strip()'),
+    ("a zero-duration milestone is allowed",
+     '            duration = int(m.group(2))',
+     '            duration = int(m.group(2)) or 1'),
+    ("an empty dependency is refused",
+     '                if any(p == "" for p in parts):',
+     '                if False:'),
     ("a task remembers its line",
-     "        return (candidates.index(name), name)",
-     "        return (name,)"),
-    ("seal hashes are no longer chained",
+     '"deps": deps, "line": lineno})',
+     '"deps": deps, "line": 0})'),
+    ("a duplicate task is reported",
+     '        if counts[t["name"]] > 1:',
+     '        if False:'),
+    ("an unknown dependency is reported",
+     '            findings.append(F("unknown-dependency", t["line"],',
+     '            findings.append(F("unknown-task", t["line"],'),
+    ("a self dependency is reported",
+     '            if d == t["name"]:',
+     '            if False:'),
+    ("a plan with no tasks is reported",
+     '    if not tasks:',
+     '    if False:'),
+    ("a dependency cycle is reported",
+     '                if color[nxt] == 1:',
+     '                if False:'),
+    ("makespan is the longest path",
+     '    makespan = max(ef.values())',
+     '    makespan = min(ef.values())'),
+    ("a task waits for a dependency",
+     '            if ef[d] > start:',
+     '            if False:'),
+    ("an off-path task has slack",
+     '        fin = makespan',
+     '        fin = 0'),
+    ("critical tasks are the zero-slack chain",
+     '    critical = [name for name in order if slack[name] == 0]',
+     '    critical = [name for name in order if slack[name] != 0]'),
+    ("a clean seal chain verifies",
      '    rec["hash"] = record_hash(rec)',
      '    rec["hash"] = "x"'),
+    ("the second seal links to the first hash",
+     '    rec["prev"] = prev',
+     '    rec["prev"] = GENESIS'),
 ]
 
 # A behaviour-preserving edit. The selftest must still pass.
@@ -107,7 +117,7 @@ def main() -> int:
     total = 0
     failed = False
 
-    workdir = pathlib.Path(tempfile.mkdtemp(prefix="tally-mut-"))
+    workdir = pathlib.Path(tempfile.mkdtemp(prefix="loom-mut-"))
     try:
         for label, old, new in MUTANTS:
             total += 1
@@ -157,5 +167,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-

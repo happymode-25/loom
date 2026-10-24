@@ -8,3 +8,6 @@ __pycache__/
 *.jsonl
 report.html
 tmp-*.html
+out.txt
+err.txt
+*.bak*
